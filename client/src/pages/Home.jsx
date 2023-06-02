@@ -9,7 +9,7 @@ const Home = () => {
     const handleSearchDevices = () => {
         if ('bluetooth' in navigator) {
             navigator.bluetooth
-                .requestDevice({ acceptAllDevices: true })
+                .requestDevice()
                 .then((device) => {
                     const newDevice = {
                         id: device.id,
