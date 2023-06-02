@@ -10,12 +10,6 @@ const Home = () => {
     const [connectionStatus, setConnectionStatus] = useState('');
     const [dataToSend, setDataToSend] = useState('');
 
-    useEffect(() => {
-        if (connectingTimeout && connectingDevice && connectedDevice === null) {
-            setConnectionStatus('No se pudo establecer la conexión');
-        }
-    }, [connectingTimeout, connectingDevice, connectedDevice]);
-
     const handleSearchDevices = () => {
         if ('bluetooth' in navigator) {
             navigator.bluetooth
@@ -149,6 +143,7 @@ const Home = () => {
                     <button onClick={handleDisconnect}>Desconectar</button>
                     <h3>Datos recibidos:</h3>
                     <p>{receivedData}</p>
+                    <input type="file" onChange={(e) => setDataToSend(e.target.files[0])} />
                     <button onClick={handleSendData}>Enviar datos</button>
                 </div>
             )}
