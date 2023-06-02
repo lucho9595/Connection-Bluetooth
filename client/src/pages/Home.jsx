@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Home = () => {
     const [devices, setDevices] = useState([]);
@@ -7,6 +7,14 @@ const Home = () => {
     const [receivedData, setReceivedData] = useState('');
     const [connectingDevice, setConnectingDevice] = useState(null);
     const [connectingTimeout, setConnectingTimeout] = useState(null);
+    const [connectionStatus, setConnectionStatus] = useState('');
+    const [dataToSend, setDataToSend] = useState('');
+
+    useEffect(() => {
+        if (connectingTimeout && connectingDevice && connectedDevice === null) {
+            setConnectionStatus('No se pudo establecer la conexión');
+        }
+    }, [connectingTimeout, connectingDevice, connectedDevice]);
 
     const handleSearchDevices = () => {
         if ('bluetooth' in navigator) {
@@ -26,45 +34,85 @@ const Home = () => {
                     setConnectingDevice(device);
 
                     const timeout = setTimeout(() => {
-                        console.error('No se ha podido establecer la conexión');
                         setConnectingDevice(null);
-                        clearTimeout(connectingTimeout);
+                        setConnectedDevice(null);
+                        setReceivedData('');
+                        setConnectionStatus('No se pudo establecer la conexión');
                     }, 10000);
 
                     setConnectingTimeout(timeout);
-
-                    return device.gatt.connect();
-                })
-                .then((gattServer) => {
-                    console.log('Conectado al dispositivo:', selectedDevice.name);
-                    setConnectedDevice(selectedDevice);
-                    setConnectingDevice(null);
-                    clearTimeout(connectingTimeout);
-
-                    // Realiza cualquier acción adicional necesaria en la conexión, como leer/escribir características o servicios
-
-                    // Ejemplo de lectura de una característica
-                    return gattServer.getPrimaryService('servicio_uuid')
-                        .then((service) => service.getCharacteristic('caracteristica_uuid'))
-                        .then((characteristic) => characteristic.readValue());
-                })
-                .then((value) => {
-                    console.log('Datos recibidos:', value);
-                    setReceivedData(value);
                 })
                 .catch((error) => {
                     console.error('Error al buscar dispositivos Bluetooth:', error);
-                    clearTimeout(connectingTimeout);
                 });
         } else {
             console.error('El navegador no admite la Web Bluetooth API');
         }
     };
 
+    const handleConnectDevice = () => {
+        if (selectedDevice) {
+            setConnectingDevice(selectedDevice);
+            setConnectionStatus('Se está conectando...');
+            clearTimeout(connectingTimeout);
+
+            selectedDevice.gatt.connect()
+                .then((gattServer) => {
+                    console.log('Conectado al dispositivo:', selectedDevice.name);
+                    setConnectedDevice(selectedDevice);
+                    setConnectingDevice(null);
+
+                    // Realiza cualquier acción adicional necesaria en la conexión, como leer/escribir características o servicios
+
+                    // Ejemplo de lectura de una característica
+                    return gattServer.getPrimaryService('servicio_uuid')
+                        .then((service) => service.getCharacteristic('caracteristica_uuid'))
+                        .then((characteristic) => {
+                            characteristic.addEventListener('characteristicvaluechanged', handleReceivedData);
+                            return characteristic.readValue();
+                        });
+                })
+                .then((value) => {
+                    console.log('Datos recibidos:', value);
+                    setReceivedData(value);
+                })
+                .catch((error) => {
+                    console.error('Error al conectar con el dispositivo:', error);
+                    setConnectingDevice(null);
+                    setConnectedDevice(null);
+                    setReceivedData('');
+                    setConnectionStatus('No se pudo establecer la conexión');
+                });
+        }
+    };
+
+    const handleReceivedData = (event) => {
+        const value = event.target.value;
+        console.log('Datos recibidos:', value);
+        setReceivedData(value);
+    };
+
     const handleDisconnect = () => {
         console.log('Se ha desconectado del dispositivo:', connectedDevice.name);
         setConnectedDevice(null);
         setReceivedData('');
+    };
+
+    const handleSendData = () => {
+        if (connectedDevice) {
+            const data = new Uint8Array([/* Datos a enviar */]);
+            connectedDevice.gatt.getPrimaryService('servicio_uuid')
+                .then((service) => service.getCharacteristic('caracteristica_uuid'))
+                .then((characteristic) => {
+                    return characteristic.writeValue(data);
+                })
+                .then(() => {
+                    console.log('Datos enviados con éxito');
+                })
+                .catch((error) => {
+                    console.error('Error al enviar datos:', error);
+                });
+        }
     };
 
     return (
@@ -91,9 +139,6 @@ const Home = () => {
                             {connectedDevice && connectedDevice.id === device.id && (
                                 <p className="text-success mt-2">Conectado</p>
                             )}
-                            {!connectedDevice && connectingTimeout && connectingDevice && connectingDevice.id === device.id && (
-                                <p className="text-danger mt-2">No se ha podido establecer la conexión</p>
-                            )}
                         </div>
                     ))}
                 </div>
@@ -104,7 +149,11 @@ const Home = () => {
                     <button onClick={handleDisconnect}>Desconectar</button>
                     <h3>Datos recibidos:</h3>
                     <p>{receivedData}</p>
+                    <button onClick={handleSendData}>Enviar datos</button>
                 </div>
+            )}
+            {connectionStatus && (
+                <p className="text-danger mt-2">{connectionStatus}</p>
             )}
         </div>
     );
