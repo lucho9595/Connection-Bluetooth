@@ -6,6 +6,7 @@ const Home = () => {
     const [connectedDevice, setConnectedDevice] = useState(null);
     const [receivedData, setReceivedData] = useState('');
     const [connectingDevice, setConnectingDevice] = useState(null);
+    const [connectingTimeout, setConnectingTimeout] = useState(null);
 
     const handleSearchDevices = () => {
         if ('bluetooth' in navigator) {
@@ -24,12 +25,21 @@ const Home = () => {
 
                     setConnectingDevice(device);
 
+                    const timeout = setTimeout(() => {
+                        console.error('No se ha podido establecer la conexión');
+                        setConnectingDevice(null);
+                        clearTimeout(connectingTimeout);
+                    }, 10000);
+
+                    setConnectingTimeout(timeout);
+
                     return device.gatt.connect();
                 })
                 .then((gattServer) => {
                     console.log('Conectado al dispositivo:', selectedDevice.name);
                     setConnectedDevice(selectedDevice);
                     setConnectingDevice(null);
+                    clearTimeout(connectingTimeout);
 
                     // Realiza cualquier acción adicional necesaria en la conexión, como leer/escribir características o servicios
 
@@ -44,6 +54,7 @@ const Home = () => {
                 })
                 .catch((error) => {
                     console.error('Error al buscar dispositivos Bluetooth:', error);
+                    clearTimeout(connectingTimeout);
                 });
         } else {
             console.error('El navegador no admite la Web Bluetooth API');
@@ -79,6 +90,9 @@ const Home = () => {
                             )}
                             {connectedDevice && connectedDevice.id === device.id && (
                                 <p className="text-success mt-2">Conectado</p>
+                            )}
+                            {!connectedDevice && connectingTimeout && connectingDevice && connectingDevice.id === device.id && (
+                                <p className="text-danger mt-2">No se ha podido establecer la conexión</p>
                             )}
                         </div>
                     ))}
