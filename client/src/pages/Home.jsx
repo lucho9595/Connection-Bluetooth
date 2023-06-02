@@ -15,10 +15,10 @@ const Home = () => {
                         id: device.id,
                         name: device.name,
                     };
-                    setSelectedDevice(device);
-                    setDevices([newDevice]);
-                    setReceivedData('');
 
+                    setSelectedDevice(device);
+                    setDevices((prevDevices) => [...prevDevices, newDevice]);
+                    setReceivedData('');
                     device.addEventListener('gattserverdisconnected', handleDisconnect);
 
                     return device.gatt.connect();
